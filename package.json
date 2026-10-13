@@ -1,0 +1,21 @@
+{
+  "name": "dealyx-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DEALYX Android and iOS app shell using the existing Dealyx website and backend.",
+  "scripts": {
+    "sync": "cap sync",
+    "android": "cap open android",
+    "ios": "cap open ios",
+    "add:android": "cap add android",
+    "add:ios": "cap add ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.4.3",
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/ios": "^7.4.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.3"
+  }
+}
