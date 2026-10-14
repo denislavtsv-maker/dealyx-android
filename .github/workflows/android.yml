@@ -1,4 +1,4 @@
-name: DEALYX Android APK — JSON Config Fix
+name: DEALYX Android APK - TypeScript Dependency Fix
 
 on:
   workflow_dispatch:
@@ -26,28 +26,28 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Locate the Capacitor project
+      - name: Locate Capacitor project
         id: project
         shell: bash
         run: |
           set -euo pipefail
           echo "Repository root: $GITHUB_WORKSPACE"
-          CONFIG_PATH="$(find . -type d \( -name .git -o -name node_modules -o -name .gradle \) -prune -o -type f \( -name 'capacitor.config.json' -o -name 'capacitor.config.js' -o -name 'capacitor.config.ts' \) -print | sort | head -n 1)"
+          CONFIG_PATH="$(find . -type d \( -name .git -o -name node_modules -o -name .gradle \) -prune -o -type f \( -name 'capacitor.config.ts' -o -name 'capacitor.config.json' -o -name 'capacitor.config.js' \) -print | sort | head -n 1)"
           if [ -z "$CONFIG_PATH" ]; then
-            echo "::error title=Capacitor config missing::No capacitor.config.json/js/ts was found. Upload the Android package contents to the repository root."
+            echo "::error title=Capacitor config missing::No capacitor.config.ts/json/js was found. Upload the Android source files to the repository root."
             find . -maxdepth 4 -type f \( -name package.json -o -name capacitor.config.json -o -name capacitor.config.ts \) -print || true
             exit 1
           fi
           APP_DIR="$(dirname "$CONFIG_PATH")"
           if [ ! -f "$APP_DIR/package.json" ]; then
-            echo "::error title=package.json missing::Found $CONFIG_PATH but no adjacent package.json. Keep the Android source folder structure intact."
+            echo "::error title=package.json missing::Found $CONFIG_PATH but no package.json beside it."
             exit 1
           fi
           echo "Using config: $CONFIG_PATH"
           echo "Using package: $APP_DIR/package.json"
           echo "app_dir=$APP_DIR" >> "$GITHUB_OUTPUT"
 
-      - name: Install dependencies
+      - name: Install dependencies including TypeScript
         working-directory: ${{ steps.project.outputs.app_dir }}
         shell: bash
         run: |
@@ -55,13 +55,21 @@ jobs:
           echo "Project directory: $(pwd)"
           node --version
           npm --version
-          node -e "const p=require('./package.json'); console.log('Project:',p.name); console.log('Dependencies:',JSON.stringify({dependencies:p.dependencies,devDependencies:p.devDependencies},null,2)); if(!p.devDependencies?.['@capacitor/cli']) process.exitCode=1;"
+          node -e "const p=require('./package.json'); console.log('Project:',p.name); console.log('Capacitor CLI:',p.devDependencies?.['@capacitor/cli'] || p.dependencies?.['@capacitor/cli'] || 'MISSING')"
           npm install --include=dev --no-audit --no-fund
-          test -x node_modules/.bin/cap || { echo '::error title=Capacitor CLI missing::Install did not create node_modules/.bin/cap. Check package.json and npm install output.'; npm ls @capacitor/cli || true; exit 1; }
+          # Capacitor detects capacitor.config.ts automatically. Install the real TypeScript
+          # compiler explicitly before invoking any Capacitor command; do not use npx tsc
+          # until this local dependency has been installed.
+          npm install --save-dev 'typescript@^5.8.3' --include=dev --no-audit --no-fund
+          test -x node_modules/.bin/tsc || { echo '::error title=TypeScript missing::Local TypeScript compiler was not installed.'; npm ls typescript || true; exit 1; }
+          test -x node_modules/.bin/cap || { echo '::error title=Capacitor CLI missing::Local Capacitor CLI was not installed.'; npm ls @capacitor/cli || true; exit 1; }
+          echo "TypeScript version:"
+          ./node_modules/.bin/tsc --version
+          echo "Capacitor version:"
           ./node_modules/.bin/cap --version
-          npm ls @capacitor/cli @capacitor/core @capacitor/android @capacitor/assets --depth=0
+          npm ls typescript @capacitor/cli @capacitor/core @capacitor/android --depth=0
 
-      - name: Ensure webDir fallback exists
+      - name: Ensure Capacitor webDir fallback exists
         working-directory: ${{ steps.project.outputs.app_dir }}
         shell: bash
         run: |
@@ -83,7 +91,7 @@ jobs:
           if [ ! -d android ]; then
             ./node_modules/.bin/cap add android
           else
-            echo "android/ already exists; preserving the native project."
+            echo "android/ already exists; keeping the native project."
           fi
 
       - name: Generate app icons and splash screens
