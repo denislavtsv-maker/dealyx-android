@@ -1,49 +1,48 @@
-
 name: Build Dealyx Android APK
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-      - master
+    branches: ["main", "master"]
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  build-debug-apk:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
+      - name: Checkout source
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
 
-      - name: Set up Java
-        uses: actions/setup-java@v5
+      - name: Install Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
 
-      - name: Install dependencies
+      - name: Install npm dependencies
         run: npm install
 
       - name: Generate Android project
         run: npx cap add android
 
-      - name: Sync Capacitor
+      - name: Generate current Dealyx app icon and splash screens
+        run: npm run assets:generate
+
+      - name: Sync Capacitor assets and config
         run: npx cap sync android
 
-      - name: Build APK
+      - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: dealyx-debug-apk
