@@ -26,8 +26,13 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Install npm dependencies
-        run: npm install
+      - name: Install npm dependencies (includes TypeScript for capacitor.config.ts)
+        run: npm install --no-audit --no-fund
+
+      - name: Verify Capacitor and TypeScript installations
+        run: |
+          npx tsc --version
+          npx cap --version
 
       - name: Generate Android project
         run: npx cap add android
